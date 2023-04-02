@@ -1,9 +1,11 @@
 version: '3'
 services:
-  # my-app:
-    # image: ${docker-registry}/my-app:1.0
-    # ports:
-     # - 3000:3000
+  my-app:
+    image: myapp:latest  # you need to build image first with the same name and tag
+    ports:
+     - 3000:3000
+    depends_on: 
+     - "mongo-express"
   mongodb:
     image: mongo
     ports:
