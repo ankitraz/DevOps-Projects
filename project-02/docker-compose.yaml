@@ -4,8 +4,9 @@ services:
     image: myapp:latest  # you need to build image first with the same name and tag
     ports:
      - 3000:3000
-    depends_on: 
+    depends_on:  # Other services that this service depends on, which will be started before this one
      - "mongo-express"
+     - "mongo"
   mongodb:
     image: mongo
     ports:
