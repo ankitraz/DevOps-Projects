@@ -2,21 +2,33 @@ def gv
 
 pipeline{
     agent any
-    
+
+    tools{
+        maven 'maven-3.9.1' //first you need to install maven inside jenkins
+    }
+
+
     stages{
         stage("init"){
             steps{
                 script{
-                    gv = load "script.groovy"
+                    gv = load "project-03/script.groovy"
                 }
                 
             }
         }
 
-        stage("Build"){
+        stage("Build and Push to dockerhub"){
             steps{
                 script{
-                    gv.Build()
+                    sh 'cd /var/jenkins_home/workspace/maven-app/project-03 && mvn clean package'
+                    // gv.Build()
+                    echo 'building docker imagee'
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-id-pass', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]){
+                        sh 'docker login -u $DOCKER_USER -p $DOCKER_PASS'
+                        sh 'cd /var/jenkins_home/workspace/maven-app/project-03 && docker build -t ankitraz/maven-app:latest .'
+                        sh 'docker push ankitraz/maven-app:latest'
+                    }
                 }
             }
         }
@@ -25,7 +37,7 @@ pipeline{
             steps{
                 script{
                     gv.Test()
-                    echo "Test by webhook"
+                    echo "Test ok"
                 }
             }
         }
