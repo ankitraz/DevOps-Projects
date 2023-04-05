@@ -7,8 +7,12 @@ def Test(){
 }
 
 def Deploy(){
-    echo "deploying the application"
-    sh 'docker run -d -p 8081:8080 ankitraz/maven-app:latest'
+    // echo "deploying the application"
+    // sh 'docker run -d -p 8081:8080 ankitraz/maven-app:latest'
+    def dockerCmd = 'docker run -d -p 8081:8080 ankitraz/maven-app:latest'
+    sshagent(['ec2-server-key']){
+        sh "ssh -o StrictHostkeyChecking=no ${EC2_USER}@${EC2_HOST} ${dockerCmd}"
+    }
 }
 
 return this

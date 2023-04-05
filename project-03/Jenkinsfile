@@ -7,6 +7,13 @@ pipeline{
         maven 'maven-3.9.1' //first you need to install maven inside jenkins
     }
 
+    environment{
+        //declare variable here and reference it in code using ${env.variablename}
+        EC2_HOST = //pass your ec2 ip address here
+        EC2_USER = 'ec2-user'
+        
+    }
+
 
     stages{
         stage("init"){
@@ -18,10 +25,17 @@ pipeline{
             }
         }
 
-        stage("Build and Push to dockerhub"){
+        stage("Build maven Artiface"){
             steps{
                 script{
                     sh 'cd /var/jenkins_home/workspace/maven-app/project-03 && mvn clean package'
+                }
+            }
+        }
+
+        stage("Build and Push to dockerhub"){
+            steps{
+                script{
                     // gv.Build()
                     echo 'building docker imagee'
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-id-pass', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]){
@@ -45,6 +59,7 @@ pipeline{
         stage("Deploy"){
             steps{
                 script{
+                    echo 'deploying maven application to ec2-server '
                     gv.Deploy()
                 }
             }
