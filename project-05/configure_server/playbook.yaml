@@ -1,0 +1,37 @@
+---
+- name: WAIT FOR SSH TO BE AVAILABLE
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: ENSURE SSH PORT OPEN
+      ansible.builtin.wait_for:
+        host: "{{ (ansible_ssh_host | default(ansible_host)) | default(inventory_hostname) }}"
+        port: 22
+        state: started
+        timeout: 300
+        delay: 10
+        search_regex: OpenSSH
+      vars:
+        ansible_connection: local
+        ansible_python_interpreter: /usr/bin/python3
+
+- name: UPDATE CACHE
+  hosts: all
+  tasks:
+    - name: UPDATE APT AND CACHE
+      ansible.builtin.apt: update_cache=yes force_apt_get=yes
+      register: update_result
+    - debug: var=update_result
+
+- name: INSTALL PACKAGES
+  hosts: all
+  tasks:
+    - name: INSTALL DOCKER
+      ansible.builtin.apt:
+        pkg:
+          - docker.io
+          - docker-compose
+        state: present
+        update_cache: true
+        force_apt_get: true
+      register: install_result
