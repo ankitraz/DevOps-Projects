@@ -14,7 +14,7 @@ provider "digitalocean" {
 }
 
 resource "digitalocean_droplet" "jenkins-server" {
-    image = "ubuntu-20-04-x64"
+    image = "ubuntu-22-04-x64"
     name = "ci-server"
     region = "blr1"
     size = "s-2vcpu-4gb"
@@ -44,6 +44,11 @@ resource "digitalocean_firewall" "web" {
     source_addresses = ["0.0.0.0/0", "::/0"]
   }
 
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "8080"
+    source_addresses = ["0.0.0.0/0"]
+  }
 
   outbound_rule {
     protocol              = "tcp"

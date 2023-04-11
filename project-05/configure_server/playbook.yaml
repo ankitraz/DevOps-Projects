@@ -15,6 +15,7 @@
         ansible_connection: local
         ansible_python_interpreter: /usr/bin/python3
 
+
 - name: UPDATE CACHE
   hosts: all
   tasks:
@@ -23,15 +24,49 @@
       register: update_result
     - debug: var=update_result
 
+
 - name: INSTALL PACKAGES
   hosts: all
   tasks:
     - name: INSTALL DOCKER
       ansible.builtin.apt:
         pkg:
-          - docker.io
+          - docker
           - docker-compose
         state: present
         update_cache: true
         force_apt_get: true
       register: install_result
+
+    - name: START DOCKER DAEMON
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+
+- name: COPY FILES
+  hosts: all
+  tasks:
+    - name: COPY JENKINS DOCKER-COMPOSE FILE TO CI SERVER
+      ansible.builtin.copy:
+        src: ../docker-compose.yaml
+        dest: /root/docker-compose.yaml
+        mode: +x
+
+    - name: START CONTAINERS FROM COMPOSE
+      community.docker.docker_compose:
+        project_src: /root
+
+- name: CONFIGURE JENKINS
+  hosts: all
+  tasks:
+    - name: GIVE DOCKER SOCKET PERMISSION TO JENKINS USER
+      community.docker.docker_container_exec:
+        container: jenkins
+        user: root
+        command: /bin/bash -c "chmod 666 /var/run/docker.sock"
+    - name: Run command inside container
+      community.docker.docker_container_exec:
+        container: jenkins
+        user: jenkins
+        command: /bin/bash -c "mkdir /var/jenkins_home/.ssh"
