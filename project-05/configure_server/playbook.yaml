@@ -89,7 +89,7 @@
       local_action:
         module: github_key
         name: jenkins-container-public-key
-        token: "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"
+        token: "your-github-token"
         pubkey: "{{ jenkins_public_key.stdout }}"
 
     - name: AUTHENTICATE GITHUB WITH JENKINS CONTAINER

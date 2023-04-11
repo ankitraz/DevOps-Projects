@@ -1,0 +1,14 @@
+---
+plugin: community.digitalocean.digitalocean
+api_token: LOL😂
+keyed_groups:
+  - key: do_tags | lower
+    prefix: ''
+    separator: ''
+  # - key: do_region.slug
+  #   prefix: 'region'
+  #   separator: '_'
+filters:
+  - '"dev" in do_tags'
+
+
