@@ -1,6 +1,6 @@
 ---
 - name: WAIT FOR SSH TO BE AVAILABLE
-  hosts: all
+  hosts: region_blr1, region_nyc1
   gather_facts: false
   tasks:
     - name: ENSURE SSH PORT OPEN
@@ -17,7 +17,7 @@
 
 
 - name: UPDATE CACHE
-  hosts: all
+  hosts: region_blr1, region_nyc1
   tasks:
     - name: UPDATE APT AND CACHE
       ansible.builtin.apt: update_cache=yes force_apt_get=yes
@@ -26,7 +26,7 @@
 
 
 - name: INSTALL PACKAGES
-  hosts: all
+  hosts: region_blr1, region_nyc1
   tasks:
     - name: INSTALL DOCKER
       ansible.builtin.apt:
@@ -45,7 +45,7 @@
         enabled: true
 
 - name: COPY FILES
-  hosts: all
+  hosts: region_blr1
   tasks:
     - name: COPY JENKINS DOCKER-COMPOSE FILE TO CI SERVER
       ansible.builtin.copy:
@@ -58,23 +58,37 @@
         project_src: /root
 
 - name: CONFIGURE JENKINS
-  hosts: all
+  hosts: region_blr1
   tasks:
     - name: GIVE DOCKER SOCKET PERMISSION TO JENKINS USER
       community.docker.docker_container_exec:
         container: jenkins
         user: root
         command: /bin/bash -c "chmod 666 /var/run/docker.sock"
+
+    - name: CHECK IF .SSH FOLDER EXIST OR NOT
+      community.docker.docker_container_exec:
+        container: jenkins
+        user: jenkins
+        command: /bin/bash -c "test -d /var/jenkins_home/.ssh && echo 'yes' || echo 'no'"
+      register: ssh_dir_exist
+
+
     - name: CREATE SSH DIR INSIDE JENKINS CONTAINER
       community.docker.docker_container_exec:
         container: jenkins
         user: jenkins
-        command: /bin/bash -c "mkdir /var/jenkins_home/.ssh"   # we are using jenkins_home dir here because it is mounted as volume and this is the home directory for jenkins user inside jenkins container
+        command: /bin/bash -c "mkdir /var/jenkins_home/.ssh"
+        # we are using jenkins_home dir here because it is mounted as volume and this is the home directory for jenkins user inside jenkins container
+      when: ssh_dir_exist.stdout == "no"
+
     - name: GENERATE SSH KEY INSIDE JENKINS CONTAINER
       community.docker.docker_container_exec:
         container: jenkins
         user: jenkins
         command: /bin/sh -c "ssh-keygen -t rsa -b 4096 -C 'jenkins@jenkins' -f /var/jenkins_home/.ssh/id_rsa -N ''"
+      when: ssh_dir_exist.stdout == "no"
+
     - name: STORING PUBLIC KEY TO A VARIABLE
       community.docker.docker_container_exec:
         container: jenkins
@@ -82,14 +96,32 @@
         command: /bin/bash -c "cat /var/jenkins_home/.ssh/id_rsa.pub"
       register: jenkins_public_key
 
+    - name: Store a value as a host variable
+      ansible.builtin.set_fact:
+        my_var: "{{ jenkins_public_key.stdout }}"
+      delegate_to: localhost
+
+    - name: STORING PRIVATE KEY TO A FILE
+      community.docker.docker_container_exec:
+        container: jenkins
+        user: jenkins
+        command: /bin/bash -c "cat /var/jenkins_home/.ssh/id_rsa"
+      register: jenkins_private_key
+
+    - name: COPY JENKINS PRIVATE KEY TO HOST CI SERVER
+      ansible.builtin.copy:
+        content: "{{ jenkins_private_key.stdout }}"
+        dest: /root/jenkins_private_key
+        mode: +x
+
 - name: AUTHETICATE GITHUB WITH JENKINS CONTAINER
-  hosts: all
+  hosts: region_blr1
   tasks:
     - name: ADD SSH KEY TO GITHUB
       local_action:
         module: github_key
         name: jenkins-container-public-key
-        token: "your-github-token"
+        token: "your-github-token😂" # dont forget to remove this
         pubkey: "{{ jenkins_public_key.stdout }}"
 
     - name: AUTHENTICATE GITHUB WITH JENKINS CONTAINER
@@ -97,3 +129,18 @@
         container: jenkins
         user: jenkins
         command: /bin/bash -c "ssh -o StrictHostKeyChecking=no -T git@github.com"
+      failed_when: false
+
+
+- name: CONFIGURE DEPLOYMENT SERVER
+  hosts: region_nyc1
+  tasks:
+    - name: CREATE AUTHORIZEDKEYS FILE AND PASTE PUBLIC KEY
+      # ansible.builtin.copy:
+      #   content: "{{ hostvars['ci-server']['my_var'] }}"  # if you are using dynamic inventory then dont use group name here, insteas use host name
+      #   dest: /root/.ssh/authorized_keys
+      #   mode: +x
+      ansible.builtin.blockinfile:
+        path: /root/.ssh/authorized_keys
+        block: |
+          {{ hostvars['ci-server']['my_var'] }}
