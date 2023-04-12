@@ -21,6 +21,14 @@ resource "digitalocean_droplet" "jenkins-server" {
     ssh_keys = [digitalocean_ssh_key.my-ssh-key.fingerprint]
     tags = [ "dev" ]
 }
+resource "digitalocean_droplet" "deployment-server" {
+    image = "ubuntu-22-04-x64"
+    name = "deployment-server"
+    region = "nyc1"
+    size = "s-2vcpu-4gb"
+    ssh_keys = [digitalocean_ssh_key.my-ssh-key.fingerprint]
+    tags = [ "dev" ]
+}
 
 
 resource "digitalocean_ssh_key" "my-ssh-key" {
@@ -79,8 +87,10 @@ output "droplet-cost" {
 
 resource "null_resource" "configure_server" {
     provisioner "local-exec" {
-        command = "ansible-playbook --inventory ${digitalocean_droplet.jenkins-server.ipv4_address}, --user root --private-key ~/.ssh/id_rsa /home/ankit/DevOps-Projects/project-05/configure_server/playbook.yaml"
+        command = "ansible-playbook -i ../configure_server/digitalocean.yaml --user root --private-key ~/.ssh/id_rsa /home/ankit/DevOps-Projects/project-05/configure_server/playbook.yaml"
     }
     triggers = {always_run = "${uuid()}"}
 }
 
+
+# ${digitalocean_droplet.jenkins-server.ipv4_address}
