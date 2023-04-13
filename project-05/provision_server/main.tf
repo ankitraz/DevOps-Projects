@@ -14,7 +14,7 @@ provider "digitalocean" {
 }
 
 resource "digitalocean_droplet" "jenkins-server" {
-    image = "ubuntu-22-04-x64"
+    image = "ubuntu-18-04-x64"
     name = "ci-server"
     region = "blr1"
     size = "s-2vcpu-4gb"
@@ -22,7 +22,7 @@ resource "digitalocean_droplet" "jenkins-server" {
     tags = [ "dev" ]
 }
 resource "digitalocean_droplet" "deployment-server" {
-    image = "ubuntu-22-04-x64"
+    image = "ubuntu-20-04-x64"
     name = "deployment-server"
     region = "nyc1"
     size = "s-2vcpu-4gb"
@@ -80,12 +80,19 @@ resource "digitalocean_firewall" "web" {
 output "droplet-id" {
     value = digitalocean_droplet.jenkins-server.ipv4_address
 }
+output "droplet2-id" {
+    value = digitalocean_droplet.deployment-server.ipv4_address
+}
 
 output "droplet-cost" {
     value = digitalocean_droplet.jenkins-server.price_monthly
 }
 
 resource "null_resource" "configure_server" {
+    depends_on = [
+        digitalocean_droplet.jenkins-server,
+        digitalocean_droplet.deployment-server
+    ]
     provisioner "local-exec" {
         command = "ansible-playbook -i ../configure_server/digitalocean.yaml --user root --private-key ~/.ssh/id_rsa /home/ankit/DevOps-Projects/project-05/configure_server/playbook.yaml"
     }

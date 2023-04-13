@@ -15,7 +15,6 @@
         ansible_connection: local
         ansible_python_interpreter: /usr/bin/python3
 
-
 - name: UPDATE CACHE
   hosts: region_blr1, region_nyc1
   tasks:
@@ -33,6 +32,7 @@
         pkg:
           - docker
           - docker-compose
+          - python3-pip
         state: present
         update_cache: true
         force_apt_get: true
@@ -44,6 +44,7 @@
         state: started
         enabled: true
 
+
 - name: COPY FILES
   hosts: region_blr1
   tasks:
@@ -54,8 +55,10 @@
         mode: +x
 
     - name: START CONTAINERS FROM COMPOSE
-      community.docker.docker_compose:
-        project_src: /root
+      ansible.builtin.command: docker-compose -f /root/docker-compose.yaml up -d
+      args:
+        chdir: /root
+      changed_when: false
 
 - name: CONFIGURE JENKINS
   hosts: region_blr1
